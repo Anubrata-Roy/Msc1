@@ -1,0 +1,155 @@
+---
+title: "Boston Assignment"
+author: "anubrata roy"
+date: "2026-01-22"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+Q1.Report the “class” of the data set. How many rows and columns are in
+this data set? What do the rows and columns represent?
+
+
+```{r}
+data("Boston")
+class(Boston)
+```
+
+
+Class:
+The dataset Boston is a data.frame in R with 506 observations (rows) and 14 variables (columns).
+Rows: Represent 506 different suburbs/neighborhoods around Boston.
+Columns: Represent 14 different socio-economic, geographical, and housing-related variables.
+
+
+Dimensions:
+
+Rows: 506
+
+Columns: 14
+
+
+Column Meanings:
+
+crim – Per capita crime rate by town
+
+zn – Proportion of residential land zoned for lots over 25,000 sq.ft
+
+indus – Proportion of non-retail business acres per town
+
+chas – Charles River dummy variable (1 if tract bounds river; 0 otherwise)
+
+nox – Nitrogen oxides concentration (parts per 10 million)
+
+rm – Average number of rooms per dwelling
+
+age – Proportion of owner-occupied units built prior to 1940
+
+dis – Weighted mean of distances to five Boston employment centers
+
+rad – Index of accessibility to radial highways
+
+tax – Full-value property-tax rate per $10,000
+
+ptratio – Pupil-teacher ratio by town
+
+black - 1000(Bk - 0.63)^2 where Bk is proportion of blacks by town
+
+lstat – Lower status of the population (percent)
+
+medv – Median value of owner-occupied homes in $1000s
+
+
+
+
+Q2.Create a smaller data set with the variables median value of owner-occupied homes, per capita crime rate, nitrogen oxides concentration, proportion of blacks and percentage of lower status of the population. Choosing median value of owner occupied homes as the response and the rest as the predictors, make scatter plots of the response versus each predictor. Present the scatter plots in different panels of the same graph. Comment on your
+findings
+
+```{r}
+smboston= Boston[, c("medv","crim","nox",'black','lstat')]
+
+par(mfrow=c(2,2))
+
+plot(smboston$crim,smboston$medv,
+     xlab = "per capita crime rate",
+     ylab = "median home value",
+     main="medv vs crim")
+
+plot(smboston$nox,smboston$medv,
+     xlab = "Nitrogen oxides concentration",
+     ylab = "median home value",
+     main="medv vs nox")
+
+plot(smboston$black,smboston$medv,
+     xlab = "black people proportion",
+     ylab = "median home value",
+     main="medv vs crim")
+
+plot(smboston$lstat,smboston$medv,
+     xlab = "lower status population (%)",
+     ylab = "median home value",
+     main="medv vs crim")
+
+```
+Median Home Value vs Crime Rate - Strong negative relationship. Suburbs with very high per capita crime rates tend to have substantially lower median home values.
+
+Median Home Value vs Nitrogen Oxides - There is a downward trend, which means that higher air pollution levels are associated with lower median house prices.
+
+Median Home Value vs Proportion of Blacks - The relationship appears weak and scattered, with a slight positive trend. Most suburbs cluster at higher values of the transformed black variable, since Most suburbs have Bk close to 1. No strong linear association with median home value is observed.
+
+Median Home Value vs Lower Status Population (lstat) - Strong negative relationship with steep downward trend. This might imply that as the percentage of lower status population increases, median home values decrease sharply. Since this appears to be the strongest predictor, it indicates that socio-economic status plays a major role in
+determining housing prices.
+
+
+
+Q3. Which suburb of Boston has lowest median value of owner-occupied homes? What
+are the values of the other predictors mentioned in (2), for that suburb. How do these
+values compare to the overall ranges for those pre-dictors? Comment on your findings.
+Hint: Mention which percentile these values belong to.
+```{r}
+minmed=which.min(smboston$medv)
+smboston[minmed,]
+```
+
+```{r}
+apply(smboston, 2, quantile)
+```
+Per capita crime rate is 38.3518 which is high, Nitrogen oxides concentration = 0.693 is close to the upper quantile, suggesting poor air quality compared to most suburbs.Proportion of blacks = 396.9 lies near the upper end of the transformed black variable, indicating a high concentration under the transformation used in the dataset.Lower status population (lstat = 30.59) This is among the highest values observed, falling in the top percentile range, indicating a very high proportion of lower
+socio-economic status residents.
+
+
+
+Q4. Does any suburb of Boston stand out for having notably high crime rates, tax rates, or pupil–teacher ratios? Hint: Use a boxplot to detect any outliers. If so, identify the suburbs that show the outlier values.
+
+
+
+```{r}
+par(mfrow = c(1, 3))
+boxplot(Boston$crim, main = "crime rate", ylab="crim")
+boxplot(Boston$tax, main = "Property tax rate", ylab="tax")
+boxplot(Boston$ptratio, main = "Pupil-teacher ratio", ylab="ptratio")
+```
+
+```{r}
+which(Boston$crim %in% boxplot.stats(Boston$crim)$out)
+```
+Crime rate (crim) has extreme outliers
+
+
+
+```{r}
+which(Boston$tax %in% boxplot.stats(Boston$tax)$out)
+```
+Tax rate (tax) shows a few suburbs with exceptionally high property taxes.
+
+
+
+```{r}
+which(Boston$ptratio %in% boxplot.stats(Boston$ptratio)$out)
+```
+Pupil–teacher ratio (ptratio) also displays notable high-end outliers.
+
