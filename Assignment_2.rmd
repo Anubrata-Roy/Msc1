@@ -215,7 +215,7 @@ for (i in 1:4) {
   r_squared[i] <- summary(models[[i]])$r.squared
 }
 
-# PART (b): Find best model
+# (b): Find best model
 best_predictor <- predictors[which.max(r_squared)]
 best_r2 <- max(r_squared)
 
@@ -224,7 +224,7 @@ cat("Best predictor:", best_predictor, "\n")
 cat("R-squared:", round(best_r2, 4), "\n")
 cat("This explains", round(best_r2 * 100, 1), "% of variance in home values.\n\n")
 
-# PART (c): Compare predictors
+# (c): Compare predictors
 cat("PART (c) ANSWER:\n")
 cat("Comparison of predictors:\n")
 cat("-----------------------\n")
@@ -253,7 +253,8 @@ for (i in 1:4) {
   cat(i, ". ", predictors[ranking[i]], " (R² = ", round(r_squared[ranking[i]], 3), ")\n", sep = "")
 }
 ```
-(b)
+
+
 
 
 
