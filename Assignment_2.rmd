@@ -1,0 +1,273 @@
+---
+title: "Boston Assignmen 2"
+author: "anubrata roy"
+date: "2026-02-05"
+output: html_document
+---
+
+```{r}
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(knitr)
+```
+
+Q1.Problem to demonstrate that the population regression line is fixed, but least square regression line varies.
+
+
+
+
+
+```{r}
+#Step 1: Take 200 equidistant points in the range [5:10]
+x=seq(5,10,length.out=200)
+y=2+3*x
+plot(x,y,type='l',lwd=3,main="Plot of the PRF Y=2+3x")
+#Step 2: Generate xi from U(5,10) and ei from N(0,16)
+n=50
+set.seed(123)
+xi=runif(n,5,10)
+ei=rnorm(n,0,4)
+#SRF y=2+3x+e
+yi=2+3*xi+ei
+#Overlaying the the points on the PRF
+plot(x,y,type='l',lwd=4,main="Plot of the PRF Y=2+3x and the Sample points")
+points(xi,yi)
+#Step 3: Least Square Regression line
+model1=lm(yi~xi)
+summary(model1)
+y.hat=-0.09639+3.30540*xi  #SRF
+#Overlaying the PRF and SRF
+plot(x,y,type='l',lwd=2,main="Plot of the PRF and the SRF")
+lines(xi,y.hat,type='l',col="blue",lty="dotted")
+legend("topleft",col=c("black","blue"),lwd=c(2,1),legend=c("PRF","SRF"),
+       lty=c("solid","dotted"))
+#Step 4: Repeat step 2 and 3 for 5 times.
+set.seed(123)
+x1=runif(n,5,10)
+e1=rnorm(n,0,4)
+y1=2+3*x1+e1
+fit1=lm(y1~x1)
+summary(fit1)
+
+
+x2=runif(n,5,10)
+e2=rnorm(n,0,4)
+y2=2+3*x2+e2
+fit2=lm(y2~x2)
+
+x3=runif(n,5,10)
+e3=rnorm(n,0,4)
+y3=2+3*x3+e3
+fit3=lm(y3~x3)
+
+x4=runif(n,5,10)
+e4=rnorm(n,0,4)
+y4=2+3*x4+e4
+fit4=lm(y4~x4)
+
+x5=runif(n,5,10)
+e5=rnorm(n,0,4)
+y5=2+3*x5+e5
+fit5=lm(y5~x5)
+
+#Data frame containing the five models' coefficients
+coeff=data.frame(coef(fit1),
+                 coef(fit2),
+                 coef(fit3),
+                 coef(fit4),
+                 coef(fit5))
+coeff
+
+#Plot of the PRF and the Five SRFs
+
+plot(x,y,type='l',lwd=3,main="Plot of the PRF and the Five SRFs")
+lines(x1,predict(fit1),type='l',col="yellow")
+lines(x2,predict(fit2),type='l',col="brown")
+lines(x3,predict(fit3),type='l',col="cyan")
+lines(x4,predict(fit4),type='l',col="darkblue")
+lines(x5,predict(fit5),type='l',col="orange")
+legend("topleft",legend=c("PRF","Model 1","Model 2","Model 3",
+                          "Model 4","Model 5"),
+       col=c("black","yellow","brown","cyan","darkblue","orange"),
+       lwd=c(3,1,1,1,1,1))
+
+```
+
+Q2.Problem to demonstrate that βˆ0 and βˆ minimises RSS
+
+```{r}
+
+#step 1: Generate xi~U(5,10) of size 50, and ei~N(0,1)
+#y=2+3x+e
+n=50
+set.seed(123)
+x=runif(n,5,10)
+x_mean=x-mean(x)
+e=rnorm(n)
+y=2+3*xm+e
+fit=lm(y~x_mean)
+summary(fit)
+beta0=2.0562
+beta=3.0764
+#Creating the beta and beta0 grid values
+beta0.grid=seq(-1,1,length.out=101)+beta0
+beta.grid=seq(-1,1,length.out=101)+beta
+#Computing RSS
+RSS=c()
+for(i in 1:length(beta.grid))
+{
+  RSS[i]=sum((y-beta0.grid[i]-beta.grid[i]*xm)^2)
+}
+RSS
+df=data.frame(beta0.grid,beta.grid,RSS)
+df
+df[which.min(RSS),]
+
+
+
+```
+
+Thus we can verify the LSE minimises the RSS
+
+
+Q3.Problem to demonstrate that least square estimators are unbiased
+
+```{r}
+#Step 1: Generate xi~U(5,10) of size 50, and ei~N(0,1)
+n=50
+set.seed(123)
+x=runif(n,0,1)
+e=rnorm(n)
+y=2+3*x+e
+#Step 2: obtain LSE
+fit=lm(y~x)
+summary(fit)
+beta_0_hat=1.8576
+beta_hat=3.3817
+#Repeat R=1000 times
+set.seed(123)
+R=10000
+beta_0=numeric(R)
+beta=numeric(R)
+n=50
+for(i in 1:R) {
+  x=runif(n,0,1)              
+  e=rnorm(n,0,1)            
+  y=2+3*x+e      
+  fit=lm(y~x)
+  beta_0[i]=coef(fit)[1]    
+  beta[i]=coef(fit)[2]      
+}
+mean(beta_0)
+mean(beta)
+
+#the long run means of beta_0_hat and beta_hat converges to true beta and beta0
+
+var(beta_0)
+var(beta)
+
+#variance approaches 0 as R goes up. Hence LSE is consistent.
+```
+
+
+QProblem 4: Comparing several simple linear regressions
+
+```{r}
+
+rm(list=ls())
+library(MASS)
+attach(Boston)
+y=medv
+x1=lstat
+x2=crim
+x3=nox
+x4=black
+
+#(a)
+fit1=lm(medv~lstat)
+fit2=lm(medv~crim)
+fit3=lm(medv~nox)
+fit4=lm(medv~black)
+install.packages("stargazer")
+library(stargazer)
+stargazer(fit1,fit2,fit3,fit4,type="text",out="f.txt")
+
+
+```
+
+
+```{r}
+# Simplified code focusing only on parts (b) and (c)
+
+# Load data
+library(MASS)
+data(Boston)
+
+# Run the four regressions
+models <- list()
+r_squared <- numeric(4)
+predictors <- c("crim", "nox", "black", "lstat")
+
+for (i in 1:4) {
+  formula <- as.formula(paste("medv ~", predictors[i]))
+  models[[i]] <- lm(formula, data = Boston)
+  r_squared[i] <- summary(models[[i]])$r.squared
+}
+
+# PART (b): Find best model
+best_predictor <- predictors[which.max(r_squared)]
+best_r2 <- max(r_squared)
+
+cat("PART (b) ANSWER:\n")
+cat("Best predictor:", best_predictor, "\n")
+cat("R-squared:", round(best_r2, 4), "\n")
+cat("This explains", round(best_r2 * 100, 1), "% of variance in home values.\n\n")
+
+# PART (c): Compare predictors
+cat("PART (c) ANSWER:\n")
+cat("Comparison of predictors:\n")
+cat("-----------------------\n")
+
+for (i in 1:4) {
+  coef_val <- coef(models[[i]])[2]
+  p_val <- coef(summary(models[[i]]))[2, 4]
+  
+  cat(predictors[i], ":\n")
+  cat("  Coefficient:", round(coef_val, 4), "\n")
+  cat("  R-squared:", round(r_squared[i], 4), "\n")
+  cat("  Significance:", ifelse(p_val < 0.05, "Significant", "Not significant"), "\n")
+  
+  if (coef_val < 0) {
+    cat("  As", predictors[i], "increases, home values decrease.\n")
+  } else {
+    cat("  As", predictors[i], "increases, home values increase.\n")
+  }
+  cat("\n")
+}
+
+
+ranking <- order(r_squared, decreasing = TRUE)
+cat("Ranking from most to least useful:\n")
+for (i in 1:4) {
+  cat(i, ". ", predictors[ranking[i]], " (R² = ", round(r_squared[ranking[i]], 3), ")\n", sep = "")
+}
+```
+(b)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
