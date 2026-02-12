@@ -266,17 +266,18 @@ cat("Ignoring large interaction term substantially increases MSE\n")
 
 i)For Weak Interaction (β₃ = 0.001)
 
-Correct model MSE: 0.99
-Naive model MSE: 1.00
-Difference: Negligible (1% increase)
+Correct model MSE: 0.9631
+Naive model MSE: 0.9739
+Difference: Negligible (approximately 1% increase)
 Conclusion: When interaction is tiny, ignoring it doesn't hurt.
 
 ii)Strong Interaction (β₃ = 3.1)
 
-Correct model MSE: 1.00
-Naive model MSE: 1.21
-Difference: Substantial (21% increase)
+Correct model MSE: 0.9577
+Naive model MSE: 2.8633
+Difference: Substantial (approximately 65% increase)
 Conclusion: When interaction is strong, ignoring it causes serious prediction errors.
+
 
 
 
