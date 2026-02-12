@@ -1,0 +1,266 @@
+---
+title: "Untitled"
+author: "Anubrata Roy"
+date: "2026-02-06"
+output: word_document
+---
+Q1
+Attach “Carseats” data from ISLR library in R.
+(a) Select the quantitative predictors from the data set “Carseats”. Run the
+linear regression equations of “sales” on each of the quantitative predictors separately.
+(b) Run multiple linear regression of sales on the quantitative predictors.
+(c) Provide the output of (a) and (b) in a single table using stargazer.
+(d) Compare the results in (a) and (b) and comment.
+(e) Based on multiple linear regression model, comment on whether at least one
+predictor is useful in predicting the response.
+(f) Comment on the goodness of fit of the multiple linear regression model.
+(g) Find the confidence interval of average sales of carseats corresponding to the
+average values of all the quantitative predictors.
+(h) Find the prediction interval of Sales of carseats corresponding to the given
+values of the quantitative predictors for store 1 .
+
+```{r}
+# Load necessary libraries
+library(ISLR)
+library(stargazer)
+# Load the Carseats dataset
+data(Carseat)
+# (a) Select quantitative predictors and run linear regression separately
+quantitative_predictors <- c("Price", "Population", "Income","Age","CompPrice", "Advertising")
+# Run linear regression for each quantitative predictor
+m1 <- lm(Sales ~ Price, data = Carseats)
+m2 <- lm(Sales ~ Population, data = Carseats)
+m3 <- lm(Sales ~ Income, data = Carseats)
+m4 <- lm(Sales ~ Age, data = Carseats)
+m5 <- lm(Sales ~ CompPrice, data = Carseats)
+m6 <- lm(Sales ~ Advertising, data = Carseats)
+m7 <- lm(Sales ~Education, data = Carseats)
+stargazer(m1, m2, m3, m4, m5, m6,m7, type = "text", title = "Linear Regression of Sales on Quantitative Predictors")
+
+```
+```{r}
+# (b) Run multiple linear regression of sales on the quantitative predictors
+m_model <- lm(Sales ~ Price + Population + Income + Age + CompPrice + Advertising + Education, data = Carseats)
+stargazer(m_model, type = "text", title = "Multiple Linear Regression of Sales on Quantitative Predictors")
+```
+```{r}
+# (c) Provide the output of (a) and (b) in a single table using stargazer
+stargazer(m1, m2, m3, m4, m5, m6,m7, m_model, type = "text", title = "Linear and Multiple Regression of Sales on Quantitative Predictors")
+```
+
+```{r}
+# (g) Find the confidence interval of average sales of carseats corresponding to the average values of all the quantitative predictors
+avg_values <- data.frame(Price = mean(Carseats$Price), Population = mean(Carseats$Population), Income = mean(Carseats$Income), Age = mean(Carseats$Age), CompPrice = mean(Carseats$CompPrice), Advertising = mean(Carseats$Advertising), Education = mean(Carseats$Education))
+conf_interval <- predict(m_model, newdata = avg_values, interval = "confidence")
+print(conf_interval)
+```
+```{r}
+# (h) Find the prediction interval of Sales of carseats corresponding to the given values of the quantitative predictors for store 1
+store1_values <- data.frame(Price = Carseats$Price[1], Population = Carseats$Population[1], Income = Carseats$Income[1], Age = Carseats$Age[1], CompPrice = Carseats$CompPrice[1], Advertising = Carseats$Advertising[1], Education = Carseats$Education[1])
+pred_interval <- predict(m_model, newdata = store1_values, interval = "prediction")
+print(pred_interval)
+```
+Q2.
+Attach “Credits” data from R. Regress “balance” on
+(a) “gender” only.
+1
+(b) “gender” and “ethnicity” .
+(c) “gender”, “ethnicity”, “income”.
+(d) Output all the regressions in (a)-(c) in a single table using stargazer. Comment on the significant coefficients in each of the models.
+(e) Explain how gender affects “balance” in each of the models (a)- (c) .
+(f) Compare the average credit card balance of a male African with a male
+Caucasian on the basis of model (b).
+(g) Compare the average credit card balance of a male African with a male
+Caucasian when each earns 100,000 dollars. For comparison, use the model in
+(c).
+(h) Compare and comment on the answers in (f) and (g)
+(i) Based on the model in (c), predict the credit card balance of a female Asian
+whose income is 2000,000 dollars.
+(j) Check the goodness of fit of the different models in (a) -(c) in terms of AIC,
+BIC and adjusted R2
+. Which model would you prefer?
+
+
+```{r}
+# Load necessary libraries
+library(ISLR)
+# Load the Credits dataset
+data(Credit)
+```
+
+
+
+```{r}
+m_1=lm(Balance~Gender,data=Credit)
+summary(m_1)
+stargazer(m1,type = "text")
+```
+
+```{r}
+m_2= lm(Balance~Gender+Ethnicity,  data=Credit)
+summary(m_2)
+stargazer(m2,type = "text")
+```
+
+```{r}
+m_3=lm(Balance~Gender+Ethnicity+Income, data=Credit)
+summary(m_3)
+stargazer(m3,type = "text")
+```
+
+```{r}
+stargazer(m_1,m_2,m_3,type="text")
+```
+
+Part (e): Gender Effect Across Models
+
+The gender effect progressively diminishes as we add controls. In Model (a), males appear to have $19.73 higher balances than females. In Model (b), this difference shrinks to $11.90. In Model (c), it further reduces to $4.93.  The diminishing coefficient suggests that males in the dataset have higher incomes than females, and once we account for this, the direct gender effect becomes negligible.
+
+
+f)
+```{r}
+
+coef(m_2)["EthnicityCaucasian"]
+
+```
+The difference between Male Caucasian and Male African in model (b) is B3=EthnicityCaucasian coefficient
+
+g)
+```{r}
+levels(Credit$Gender)
+levels(Credit$Ethnicity)
+
+new_african=data.frame(
+  Gender = factor("Male", levels = levels(Credit$Gender)),
+  Ethnicity = factor("African American", levels = levels(Credit$Ethnicity)),
+  Income = 100000
+)
+
+new_caucasian=data.frame(
+  Gender = factor("Male", levels = levels(Credit$Gender)),
+  Ethnicity = factor("Caucasian", levels = levels(Credit$Ethnicity)),
+  Income = 100000
+)
+
+
+predict(m_3, new_african)
+predict(m_3, new_caucasian)
+
+```
+(h) Compare and comment on the answers in (f) and (g)
+Model (b) ignores income so ethnicity may look more important.
+Model (c) adjusts for income so ethnicity effect may shrink.
+So income is a confounder.
+
+i)
+```{r}
+
+new_person=data.frame(Gender="Female",
+                         Ethnicity="Asian",
+                         Income=2000)
+
+predict(m_3, new_person)
+```
+
+
+(j) Check the goodness of fit of the different models in (a) -(c) in terms of AIC, BIC and adjusted R2. Which model would you prefer?\
+```{r}
+AIC(m_1, m_2, m_3)
+BIC(m_1,m_2, m_3)
+
+summary(m_1)$adj.r.squared
+summary(m_2)$adj.r.squared
+summary(m_3)$adj.r.squared
+```
+We can observe that model 3 has the lowest AIC/BIC and the highest adjusted r squared value.Hence, the preferred model is model 3.
+
+
+
+
+```{r}
+# Set parameters
+set.seed(123)
+R <- 1000
+n <- 100
+
+# Parameter configurations
+beta1 <- c(-2.5, 1.2, 2.3, 0.001)  # Small interaction
+beta2 <- c(-2.5, 1.2, 2.3, 3.1)    # Large interaction
+
+# Initialize MSE storage
+mse_correct1 <- numeric(R)
+mse_naive1 <- numeric(R)
+mse_correct2 <- numeric(R)
+mse_naive2 <- numeric(R)
+
+# Simulation for beta configuration 1
+for(r in 1:R) {
+  # Generate data
+  x1 <- rnorm(n, 0, 1)
+  x2 <- rbinom(n, 1, 0.3)
+  epsilon <- rnorm(n, 0, 1)
+  
+  # Generate y with interaction
+  y <- beta1[1] + beta1[2] * x1 + beta1[3] * x2 + beta1[4] * (x1 * x2) + epsilon
+  
+  # Fit correct model (with interaction)
+  model_correct <- lm(y ~ x1 + x2 + x1:x2)
+  
+  # Fit naive model (without interaction)
+  model_naive <- lm(y ~ x1 + x2)
+  
+  # Calculate MSE
+  mse_correct1[r] <- mean(residuals(model_correct)^2)
+  mse_naive1[r] <- mean(residuals(model_naive)^2)
+}
+
+# Simulation for beta configuration 2
+for(r in 1:R) {
+  # Generate data
+  x1 <- rnorm(n, 0, 1)
+  x2 <- rbinom(n, 1, 0.3)
+  epsilon <- rnorm(n, 0, 1)
+  
+  # Generate y with interaction
+  y <- beta2[1] + beta2[2] * x1 + beta2[3] * x2 + beta2[4] * (x1 * x2) + epsilon
+  
+  # Fit correct model (with interaction)
+  model_correct <- lm(y ~ x1 + x2 + x1:x2)
+  
+  # Fit naive model (without interaction)
+  model_naive <- lm(y ~ x1 + x2)
+  
+  # Calculate MSE
+  mse_correct2[r] <- mean(residuals(model_correct)^2)
+  mse_naive2[r] <- mean(residuals(model_naive)^2)
+}
+
+# Calculate average MSEs
+avg_mse <- data.frame(
+  Configuration = c("β3=0.001", "β3=3.1"),
+  Correct_Model = c(mean(mse_correct1), mean(mse_correct2)),
+  Naive_Model = c(mean(mse_naive1), mean(mse_naive2)),
+  Difference = c(mean(mse_naive1) - mean(mse_correct1),
+                 mean(mse_naive2) - mean(mse_correct2))
+)
+print(avg_mse)
+
+# Demonstrate impact
+cat("\nImpact of ignoring interaction:\n")
+cat("When beta_3 is small (0.001): Difference in MSE =", avg_mse$Difference[1], "\n")
+cat("When beta_3 is large (3.1): Difference in MSE =", avg_mse$Difference[2], "\n")
+cat("Ignoring large interaction term substantially increases MSE\n")
+
+
+
+```
+
+
+
+
+
+
+
+
+
+
