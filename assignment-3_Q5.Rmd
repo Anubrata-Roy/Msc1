@@ -33,7 +33,7 @@ vehicle_glass <- subset(fgl, type == "Veh")
 cat("Number of Vehicle Window glass samples:", nrow(vehicle_glass), "\n")
 ```
 
-
+a)
 ```{r}
 # Multiple linear regression of RI on metallic oxides
 # The metallic oxides in the dataset are: Na, Mg, Al, Si, K, Ca, Ba, Fe
@@ -54,7 +54,11 @@ best_predictor <- names(which.min(p_values))
 cat("\nBest predictor of RI based on p-value:", best_predictor)
 cat("\nP-value for", best_predictor, ":", min(p_values), "\n")
 ```
+Best predictor of RI based on p-value: Fe
+P-value for Fe : 0.003616 
 
+
+b)
 ```{r}
 # Simple linear regression using the best predictor
 slr_model <- lm(RI ~ vehicle_glass[[best_predictor]], 
@@ -70,9 +74,13 @@ rmse_slr <- sqrt(mean(summary_slr$residuals^2))
 cat("\nRMSE for Simple Linear Regression:", rmse_slr, "\n")
 cat("R-squared for Simple Linear Regression:", summary_slr$r.squared, "\n")
 
-
 ```
+RMSE for Simple Linear Regression: 1.652736 
+R-squared for Simple Linear Regression: 0.2097192 
 
+c) 
+
+Yes, we can improve the regression by trying nonlinear relationships since the relationship between refractive index and metallic oxides isn't always perfectly straight.
 
 ```{r}
 # Create quadratic model (adds squared term)
@@ -95,6 +103,7 @@ ggplot(vehicle_glass, aes(x = Mg, y = RI)) +
   labs(title = "Nonlinear (red) fits better than Linear (blue)",
        subtitle = "The curved line follows the data more closely")
 ```
+
 
 
 
