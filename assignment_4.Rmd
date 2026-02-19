@@ -29,6 +29,7 @@ data(Credit)
 # Check the structure of the data
 str(Credit)
 ```
+a)
 ```{r}
 # Set up plotting area
 par(mfrow = c(1, 2))
@@ -64,7 +65,7 @@ Rating vs Limit: Shows strong positive linear relationship, indicating high corr
 This suggests multicollinearity issues when including both Rating and Limit
 
 
-
+b)
 ```{r}
 # Run three regressions
 # (i) Balance on Age and Limit
@@ -107,7 +108,7 @@ Individual p-values may become insignificant even though the model overall is si
 
 Rating and Limit coefficients show high variance due to multicollinearity
 
-
+c)
 ```{r}
 # Calculate VIF for the full model (Model 2)
 vif_values <- vif(model2)
@@ -244,33 +245,8 @@ print(influential_fitted)
 ```
 
 
-```{r}
-# Create summary table of detected points
-summary_table <- data.frame(
-  Row.names = 1:n,
-  Outliers = ifelse(1:n %in% outliers, "Yes", "No"),
-  High_Leverage = ifelse(1:n %in% high_leverage, "Yes", "No"),
-  Influential_CooksD = ifelse(1:n %in% influential, "Yes", "No"),
-  Influential_DFFITS = ifelse(1:n %in% influential_fitted, "Yes", "No"),
-  Influential_DFBETAS = ifelse(influential_coef, "Yes", "No")
-)
 
-# Show points that are flagged by at least one criterion
-flagged_points <- summary_table[
-  summary_table$Outliers == "Yes" | 
-  summary_table$High_Leverage == "Yes" | 
-  summary_table$Influential_CooksD == "Yes" |
-  summary_table$Influential_DFFITS == "Yes" |
-  summary_table$Influential_DFBETAS == "Yes", 
-]
 
-cat("\nPoints flagged by any criterion:\n")
-print(flagged_points)
-
-# Final diagnostic plots
-par(mfrow = c(2, 2))
-plot(model_boston)
-```
 
 
 
