@@ -1,0 +1,283 @@
+---
+title: "p_set_4"
+author: "anubrata roy"
+date: "2026-02-19"
+output: html_document
+---
+
+Q1.Problem to demonstrate multicollinearity
+Consider the Credit data in the ISLR library. Choose balance as the response and Age, Limit and Rating as the predictors.
+
+(a) Make a scatter plot of (i) Age versus Limit and (ii) Rating Versus Limit. Comment on the scatter plot.
+
+(b) Run three separate regressions: (i) Balance on Age and Limit (ii) Balance on Age, Rating and Limit (iii) Balance on Rating and Limit. Present all the regression output in a single table using stargazer. What is the marked difference that you can observe from the output?
+
+(c) Calculate the variance inflation factor (VIF) and comment on multicollinear-
+ity.
+
+
+
+```{r}
+# Load required libraries
+library(ISLR)
+library(stargazer)
+library(car)
+
+# Load the Credit data
+data(Credit)
+
+# Check the structure of the data
+str(Credit)
+```
+```{r}
+# Set up plotting area
+par(mfrow = c(1, 2))
+
+# (i) Age versus Limit
+plot(Credit$Limit, Credit$Age, 
+     xlab = "Limit", ylab = "Age",
+     main = "Age vs Limit",
+     pch = 19, col = "blue")
+abline(lm(Age ~ Limit, data = Credit), col = "red", lwd = 2)
+
+# (ii) Rating versus Limit
+plot(Credit$Limit, Credit$Rating, 
+     xlab = "Limit", ylab = "Rating",
+     main = "Rating vs Limit",
+     pch = 19, col = "blue")
+abline(lm(Rating ~ Limit, data = Credit), col = "red", lwd = 2)
+
+# Reset plotting parameters
+par(mfrow = c(1, 1))
+
+# Calculate correlations
+cor_age_limit <- cor(Credit$Age, Credit$Limit)
+cor_rating_limit <- cor(Credit$Rating, Credit$Limit)
+cat("Correlation between Age and Limit:", cor_age_limit, "\n")
+cat("Correlation between Rating and Limit:", cor_rating_limit, "\n")
+```
+
+Age vs Limit: Shows weak/no clear pattern, indicating low correlation
+
+Rating vs Limit: Shows strong positive linear relationship, indicating high correlation
+
+This suggests multicollinearity issues when including both Rating and Limit
+
+
+
+```{r}
+# Run three regressions
+# (i) Balance on Age and Limit
+model1 <- lm(Balance ~ Age + Limit, data = Credit)
+
+# (ii) Balance on Age, Rating and Limit
+model2 <- lm(Balance ~ Age + Rating + Limit, data = Credit)
+
+# (iii) Balance on Rating and Limit
+model3 <- lm(Balance ~ Rating + Limit, data = Credit)
+
+# Create a single table using stargazer
+stargazer(model1, model2, model3,
+          type = "text",
+          title = "Regression Results",
+          column.labels = c("Model 1", "Model 2", "Model 3"),
+          dep.var.labels = "Balance",
+          covariate.labels = c("Age", "Rating", "Limit"),
+          omit.stat = c("f", "ser"),
+          digits = 3)
+
+# Calculate standard errors for comparison
+summary_model1 <- summary(model1)
+summary_model2 <- summary(model2)
+summary_model3 <- summary(model3)
+
+cat("\nModel 1 - Age coefficient SE:", summary_model1$coefficients[2, 2], "\n")
+cat("Model 2 - Age coefficient SE:", summary_model2$coefficients[2, 2], "\n")
+cat("Model 2 - Rating coefficient SE:", summary_model2$coefficients[3, 2], "\n")
+cat("Model 2 - Limit coefficient SE:", summary_model2$coefficients[4, 2], "\n")
+cat("Model 3 - Rating coefficient SE:", summary_model3$coefficients[2, 2], "\n")
+cat("Model 3 - Limit coefficient SE:", summary_model3$coefficients[3, 2], "\n")
+```
+
+Standard errors increase dramatically in Model 2 (with all three predictors) for Rating and Limit
+
+Coefficient signs may change or become unstable
+
+Individual p-values may become insignificant even though the model overall is significant
+
+Rating and Limit coefficients show high variance due to multicollinearity
+
+
+```{r}
+# Calculate VIF for the full model (Model 2)
+vif_values <- vif(model2)
+cat("Variance Inflation Factors:\n")
+print(vif_values)
+
+# Interpretation
+cat("\nInterpretation:\n")
+cat("- VIF = 1: No correlation\n")
+cat("- VIF between 1-5: Moderate correlation (acceptable)\n")
+cat("- VIF > 5: High correlation (problematic)\n")
+cat("- VIF > 10: Serious multicollinearity\n")
+
+# Check correlation matrix of predictors
+cor_matrix <- cor(Credit[, c("Age", "Rating", "Limit")])
+cat("\nCorrelation Matrix:\n")
+print(cor_matrix)
+```
+
+Q2.Problem to demonstrate the detection of outlier, leverage and influential points
+
+Attach “Boston” data from MASS library in R. Select median value of owner-occupied homes, as the response and per capita crime rate, nitrogen oxides concentration, proportion of blacks and percentage of lower status of the population as predictors. The objective is to fit a multiple linear regression model of the response on the predictors. With reference to this problem, detect outliers, leverage points and influential points if any.
+
+```{r}
+# Load required libraries
+library(MASS)
+library(car)
+
+# Load Boston data
+data(Boston)
+
+# Select variables
+# Response: medv (median value of owner-occupied homes)
+# Predictors: crim (per capita crime rate), nox (nitrogen oxides concentration),black (proportion of blacks),lstat (percentage of lower status population)
+
+# Create subset
+boston_subset <- Boston[, c("medv", "crim", "nox", "black", "lstat")]
+
+# Fit multiple linear regression model
+model_boston <- lm(medv ~ crim + nox + black + lstat, data = boston_subset)
+summary(model_boston)
+
+### 1. Outlier Detection
+# Studentized residuals
+student_resid <- rstudent(model_boston)
+
+# Identify outliers (|studentized residual| > 3)
+outliers <- which(abs(student_resid) > 3)
+cat("Outliers (|studentized residual| > 3):\n")
+print(outliers)
+cat("\nStudentized residuals for outliers:\n")
+print(student_resid[outliers])
+
+# Plot studentized residuals
+par(mfrow = c(2, 2))
+plot(student_resid, 
+     ylab = "Studentized Residuals",
+     main = "Outlier Detection",
+     pch = 19, col = "blue")
+abline(h = c(-3, 3), col = "red", lty = 2)
+
+# Identify points with |studentized residual| > 3
+points(outliers, student_resid[outliers], 
+       col = "red", pch = 19, cex = 1.5)
+```
+
+```{r}
+# Calculate leverage values (hat values)
+leverage <- hatvalues(model_boston)
+
+# Calculate threshold (2p/n where p = number of predictors, n = sample size)
+p <- length(coef(model_boston)) - 1  # number of predictors
+n <- nrow(boston_subset)
+leverage_threshold <- 2 * p / n
+
+# Identify high leverage points
+high_leverage <- which(leverage > leverage_threshold)
+cat("High leverage points (h > 2p/n =", round(leverage_threshold, 4), "):\n")
+print(high_leverage)
+cat("\nLeverage values for high leverage points:\n")
+print(leverage[high_leverage])
+
+# Plot leverage values
+plot(leverage, 
+     ylab = "Leverage (Hat Values)",
+     main = "Leverage Points Detection",
+     pch = 19, col = "blue")
+abline(h = leverage_threshold, col = "red", lty = 2)
+points(high_leverage, leverage[high_leverage], 
+       col = "red", pch = 19, cex = 1.5)
+```
+
+```{r}
+# Cook's Distance
+cooks_d <- cooks.distance(model_boston)
+
+# Threshold (4/n)
+cooks_threshold <- 4 / n
+
+# Identify influential points
+influential <- which(cooks_d > cooks_threshold)
+cat("Influential points (Cook's D > 4/n =", round(cooks_threshold, 4), "):\n")
+print(influential)
+cat("\nCook's D values for influential points:\n")
+print(cooks_d[influential])
+
+# Plot Cook's Distance
+plot(cooks_d, 
+     ylab = "Cook's Distance",
+     main = "Influential Points Detection",
+     pch = 19, col = "blue")
+abline(h = cooks_threshold, col = "red", lty = 2)
+points(influential, cooks_d[influential], 
+       col = "red", pch = 19, cex = 1.5)
+
+# DFBETAS (influence on individual coefficients)
+dfbetas_values <- dfbetas(model_boston)
+
+# Find points with |DFBETAS| > 2/sqrt(n)
+dfbetas_threshold <- 2 / sqrt(n)
+influential_coef <- apply(abs(dfbetas_values) > dfbetas_threshold, 1, any)
+cat("\nPoints influential on individual coefficients (|DFBETAS| > 2/sqrt(n) =", 
+    round(dfbetas_threshold, 4), "):\n")
+print(which(influential_coef))
+
+# DFFITS (influence on fitted values)
+dffits_values <- dffits(model_boston)
+dffits_threshold <- 2 * sqrt(p / n)
+influential_fitted <- which(abs(dffits_values) > dffits_threshold)
+cat("\nPoints influential on fitted values (|DFFITS| > 2*sqrt(p/n) =", 
+    round(dffits_threshold, 4), "):\n")
+
+print(influential_fitted)
+```
+
+
+```{r}
+# Create summary table of detected points
+summary_table <- data.frame(
+  Row.names = 1:n,
+  Outliers = ifelse(1:n %in% outliers, "Yes", "No"),
+  High_Leverage = ifelse(1:n %in% high_leverage, "Yes", "No"),
+  Influential_CooksD = ifelse(1:n %in% influential, "Yes", "No"),
+  Influential_DFFITS = ifelse(1:n %in% influential_fitted, "Yes", "No"),
+  Influential_DFBETAS = ifelse(influential_coef, "Yes", "No")
+)
+
+# Show points that are flagged by at least one criterion
+flagged_points <- summary_table[
+  summary_table$Outliers == "Yes" | 
+  summary_table$High_Leverage == "Yes" | 
+  summary_table$Influential_CooksD == "Yes" |
+  summary_table$Influential_DFFITS == "Yes" |
+  summary_table$Influential_DFBETAS == "Yes", 
+]
+
+cat("\nPoints flagged by any criterion:\n")
+print(flagged_points)
+
+# Final diagnostic plots
+par(mfrow = c(2, 2))
+plot(model_boston)
+```
+
+
+
+
+
+
+
+
+
+

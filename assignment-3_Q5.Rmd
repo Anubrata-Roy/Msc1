@@ -1,0 +1,108 @@
+---
+title: "assgnment3_Q5"
+author: "anubrata roy"
+date: "2026-02-19"
+output: html_document
+---
+
+Q5.Problem to demonstrate the utility of non-linear regression over linear regression
+
+Get the fgl data set from “MASS” library.
+(a) Considering the refractive index (RI) of “Vehicle Window glass” as the
+variable of interest and assuming linearity of regression, run multiple linear regression of RI on different metallic oxides. From the p value, report which
+metallic oxide best explains the refractive index.
+(b) Run a simple linear regression of RI on the best predictor chosen in (a).
+(c) Can you further improve the regression of the refractive index of “Vehicle
+Window glass” on the predictor chosen by you in part (a)? Give the new fitted
+model and compare its performance with the model in (b).
+
+
+```{r}
+# Load required libraries
+library(MASS)
+library(ggplot2)
+library(gridExtra)
+
+# Load the fgl dataset
+data(fgl)
+# View the structure of the dataset
+str(fgl)
+
+# Filter for Vehicle Window glass only
+vehicle_glass <- subset(fgl, type == "Veh")
+cat("Number of Vehicle Window glass samples:", nrow(vehicle_glass), "\n")
+```
+
+
+```{r}
+# Multiple linear regression of RI on metallic oxides
+# The metallic oxides in the dataset are: Na, Mg, Al, Si, K, Ca, Ba, Fe
+mlr_model <- lm(RI ~ Na + Mg + Al + Si + K + Ca + Ba + Fe, data = vehicle_glass)
+
+# Summary of the model
+summary_mlr <- summary(mlr_model)
+print(summary_mlr)
+
+# Extract p-values
+p_values <- summary_mlr$coefficients[-1, 4]  # Remove intercept
+p_values <- sort(p_values)
+cat("\nP-values for metallic oxides (sorted):\n")
+print(p_values)
+
+# Find the best predictor (lowest p-value)
+best_predictor <- names(which.min(p_values))
+cat("\nBest predictor of RI based on p-value:", best_predictor)
+cat("\nP-value for", best_predictor, ":", min(p_values), "\n")
+```
+
+```{r}
+# Simple linear regression using the best predictor
+slr_model <- lm(RI ~ vehicle_glass[[best_predictor]], 
+                data = vehicle_glass)
+names(slr_model$coefficients) <- c("(Intercept)", best_predictor)
+
+# Summary of the simple linear model
+summary_slr <- summary(slr_model)
+print(summary_slr)
+
+# Calculate RMSE for model comparison
+rmse_slr <- sqrt(mean(summary_slr$residuals^2))
+cat("\nRMSE for Simple Linear Regression:", rmse_slr, "\n")
+cat("R-squared for Simple Linear Regression:", summary_slr$r.squared, "\n")
+
+
+```
+
+
+```{r}
+# Create quadratic model (adds squared term)
+quadratic_model <- lm(RI ~ Mg + I(Mg^2), data = vehicle_glass)
+
+# Compare with simple linear model
+linear_model <- lm(RI ~ Mg, data = vehicle_glass)
+
+# Check if quadratic term is significant
+summary(quadratic_model)
+```
+
+
+```{r}
+# Plot both models to see the improvement
+ggplot(vehicle_glass, aes(x = Mg, y = RI)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE, color = "blue", linetype = "dashed") +
+  geom_smooth(method = "loess", se = FALSE, color = "red") +
+  labs(title = "Nonlinear (red) fits better than Linear (blue)",
+       subtitle = "The curved line follows the data more closely")
+```
+
+
+
+
+
+
+
+
+
+
+
