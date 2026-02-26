@@ -1,0 +1,136 @@
+---
+title: "assignment 5"
+author: "anubrata roy"
+date: "2026-02-26"
+output: word_document
+---
+
+
+```{r}
+# ======================================================================
+# PROBLEM SET 5: KNN vs LEAST SQUARES REGRESSION
+# Based on your code structure
+# ======================================================================
+
+library(caret)
+set.seed(123)
+
+# Generate data
+x1 = rnorm(1000, mean = 0, sd = 2)
+x2 = rpois(1000, lambda = 1.5)
+epsilon = rnorm(1000, 0, 1)
+
+# Linear DGP
+y_linear = -2 + 1.4*x1 - 2.6*x2 + epsilon
+data_linear = data.frame(y = y_linear, x1 = x1, x2 = x2)
+
+# Split data
+train_linear = data_linear[1:800, ]
+test_linear = data_linear[801:1000, ]
+
+# ======================================================================
+# 1. Multiple Linear Regression (Linear DGP)
+# ======================================================================
+
+mod_lm = lm(y ~ x1 + x2, data = train_linear)
+pred_lm = predict(mod_lm, newdata = test_linear)
+mse_lm = mean((test_linear$y - pred_lm)^2)
+cat("Linear Regression MSE (linear DGP):", mse_lm, "\n")
+summary(mod_lm)
+
+# ======================================================================
+# 1. Multiple Linear Regression (Nonlinear DGP)
+# ======================================================================
+
+mod_lm_nl = lm(y ~ x1 + x2, data = train_nonlinear)
+pred_lm_nl = predict(mod_lm_nl, newdata = test_nonlinear)
+mse_lm_nl = mean((test_nonlinear$y - pred_lm_nl)^2)
+cat("\nLinear Regression MSE(nonlinear DGP:", mse_lm_nl, "\n")
+summary(mod_lm_nl)
+
+```
+
+
+```{r}
+# ======================================================================
+# 2. KNN with different k values (Linear DGP)
+# ======================================================================
+
+cat("Linear DGP\n\n")
+k_values = c(1, 2, 5, 9, 15)
+knn_mse = numeric(length(k_values))
+
+for(i in seq_along(k_values)) {
+  k = k_values[i]
+  mod_knn = knnreg(y ~ x1 + x2, data = train_linear, k = k)
+  pred_knn = predict(mod_knn, test_linear)
+  knn_mse[i] = mean((test_linear$y - pred_knn)^2)
+  cat("KNN (k=", k, ") MSE:", knn_mse[i], "\n", sep="")
+}
+
+# ======================================================================
+# Nonlinear DGP
+# ======================================================================
+# Generate nonlinear data
+# y = 1/(-2 + 1.4x1 - 2.6x2 + 2.9x1) + 3.1*sin(x2) - 1.5*x1^2 + 1 + ε
+
+cat("\nNonlinear DGP\n\n")
+# Use same x1, x2 or generate new ones
+x1_nl = rnorm(1000, 0, 2)
+x2_nl = rpois(1000, 1.5)
+epsilon_nl = rnorm(1000, 0, 1)
+
+# Calculate denominator (avoid division issues)
+denom = -2 + 1.4*x1_nl - 2.6*x2_nl + 2.9*x1_nl
+denom = ifelse(abs(denom) < 0.1, sign(denom) * 0.1, denom)
+
+y_nonlinear = 1/denom + 3.1*sin(x2_nl) - 1.5*x1_nl^2 + 1 + epsilon_nl
+data_nonlinear = data.frame(y = y_nonlinear, x1 = x1_nl, x2 = x2_nl)
+
+# Split data
+train_nonlinear = data_nonlinear[1:800, ]
+test_nonlinear = data_nonlinear[801:1000, ]
+
+
+cat("KNN with different values")
+knn_mse_nl = numeric(length(k_values))
+
+for(i in seq_along(k_values)) {
+  k = k_values[i]
+  mod_knn_nl = knnreg(y ~ x1 + x2, data = train_nonlinear, k = k)
+  pred_knn_nl = predict(mod_knn_nl, test_nonlinear)
+  knn_mse_nl[i] = mean((test_nonlinear$y - pred_knn_nl)^2)
+  cat("KNN (k=", k, ") MSE:", knn_mse_nl[i], "\n", sep="")
+}
+```
+
+
+```{r}
+# ======================================================================
+# Comparison Table
+# ======================================================================
+
+cat("\n========== COMPARISON ==========\n")
+cat("\nLINEAR DGP:\n")
+cat("  Linear Regression MSE:", round(mse_lm, 6), "\n")
+for(i in seq_along(k_values)) {
+  cat("  KNN (k=", k_values[i], ") MSE:", round(knn_mse[i], 6), "\n", sep="")
+}
+
+cat("\nNONLINEAR DGP:\n")
+cat("  Linear Regression MSE:", round(mse_lm_nl, 6), "\n")
+for(i in seq_along(k_values)) {
+  cat("  KNN (k=", k_values[i], ") MSE:", round(knn_mse_nl[i], 6), "\n", sep="")
+}
+
+```
+
+Inference:
+
+**Linear DGP Performance:** When the true relationship is linear, ordinary least squares regression achieves a test MSE of 0.998901, which is nearly optimal and outperforms most KNN models.
+
+**KNN on Linear Data:** For linear data, KNN with k=9 , MSE: 1.205371 which is closest to the linear regression, but for smaller k values perform worse due to overfitting and capturing noise rather than the true linear pattern.
+
+**Nonlinear DGP Performance:** When the true relationship is nonlinear, the misspecified linear model performs extremely poorly with an MSE of 48.5784, as it cannot capture the complex patterns in the data.
+
+**KNN on Nonlinear Data:** KNN successfully captures the nonlinear patterns, with k=5 achieving the lowest MSE of 1.806674, dramatically outperforming the misspecified linear model.

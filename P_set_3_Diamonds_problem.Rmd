@@ -1,0 +1,213 @@
+---
+title: "Diamonds dataset problem"
+author: "anubrata roy"
+date: "2026-02-26"
+output: word_document
+---
+
+
+```{r}
+# ======================================================================
+# CONTINUATION OF REFERENCE CODE
+# Problem: Role of qualitative (ordinal) predictors in multiple linear regression
+# ======================================================================
+
+# Load required libraries
+library(ggplot2)
+library(stargazer)
+library(dplyr)
+
+# The data is already loaded from the reference code
+# df1 and df2 are already created
+# Let's ensure we have a clean dataset to work with
+
+data(diamonds)
+df <- as.data.frame(diamonds)
+
+# Identify ordinal categorical variables and response
+cat("========================================\n")
+cat("ORDINAL CATEGORICAL VARIABLES IN DIAMONDS DATASET:\n")
+cat("========================================\n")
+cat("1. cut: Fair < Good < Very Good < Premium < Ideal\n")
+cat("2. color: D (best) < E < F < G < H < I < J (worst)\n")
+cat("3. clarity: I1 < SI2 < SI1 < VS2 < VS1 < VVS2 < VVS1 < IF\n")
+cat("\nResponse variable: price (in US dollars)\n")
+cat("========================================\n\n")
+
+# ======================================================================
+# (a) Run a linear regression of the response on the quality of cut
+# ======================================================================
+
+cat("PART (a): Linear regression of price on cut quality\n")
+cat("----------------------------------------------------\n")
+
+# Using the approach from reference code with releveling
+df_cut <- df
+df_cut$cut <- factor(df_cut$cut, ordered = FALSE)
+# Relevel to have "Ideal" as reference for easier interpretation
+df_cut$cut <- relevel(df_cut$cut, ref = "Ideal")
+
+model_cut <- lm(price ~ cut, data = df_cut)
+cat("Fitted Regression Model:\n")
+cat("price = ", round(coef(model_cut)[1], 2))
+for(i in 2:length(coef(model_cut))) {
+  cat(" + ", round(coef(model_cut)[i], 2), "*cut", names(coef(model_cut))[i], sep="")
+}
+cat("\n\n")
+summary(model_cut)
+stargazer(model_cut, type = "text", title = "Model: Price ~ Cut")
+
+# Alternative using as.character to avoid default ordering (as in reference)
+model_test <- lm(price ~ relevel(factor(as.character(cut)), ref="Ideal"), data=diamonds)
+cat("\nAlternative model (using as.character):\n")
+summary(model_test)
+```
+
+
+```{r}
+# ======================================================================
+# (b) Test whether expected price of diamond with premium cut is 
+#     significantly different from that of the ideal cut
+# ======================================================================
+
+cat("\n\nPART (b): Testing Premium Cut vs Ideal Cut\n")
+cat("-------------------------------------------\n")
+
+# From model_cut, the coefficient for cutPremium directly tests this
+premium_coef <- summary(model_cut)$coefficients["cutPremium", ]
+cat("Coefficient for cutPremium:", round(premium_coef["Estimate"], 2), "\n")
+cat("Standard Error:", round(premium_coef["Std. Error"], 2), "\n")
+cat("t-value:", round(premium_coef["t value"], 2), "\n")
+cat("p-value:", format.pval(premium_coef["Pr(>|t|)"], digits=4), "\n")
+
+if(premium_coef["Pr(>|t|)"] < 0.05) {
+  cat("\nCONCLUSION: The expected price of diamond with PREMIUM cut is")
+  cat(" SIGNIFICANTLY DIFFERENT from IDEAL cut (p < 0.05).\n")
+} else {
+  cat("\nCONCLUSION: The expected price of diamond with PREMIUM cut is")
+  cat(" NOT significantly different from IDEAL cut.\n")
+}
+
+# Verify with actual means (as in reference code)
+cat("\nVerification using actual means:\n")
+cut_means <- aggregate(df$price, by=list(cut=df$cut), mean)
+print(cut_means)
+
+premium_actual <- cut_means$x[cut_means$cut == "Premium"]
+ideal_actual <- cut_means$x[cut_means$cut == "Ideal"]
+cat("\nActual mean difference (Premium - Ideal): $", 
+    round(premium_actual - ideal_actual, 2), "\n")
+```
+
+
+```{r}
+# ======================================================================
+# (c) What is the expected price of a diamond of ideal cut?
+# ======================================================================
+
+cat("\n\nPART (c): Expected Price for Ideal Cut\n")
+cat("----------------------------------------\n")
+
+# From model_cut with Ideal as reference, the intercept is the expected price
+ideal_price <- coef(model_cut)["(Intercept)"]
+cat("From regression model: $", round(ideal_price, 2), "\n")
+
+# Using predict function
+new_ideal <- data.frame(cut = factor("Ideal", levels = levels(df_cut$cut)))
+pred_ideal <- predict(model_cut, newdata = new_ideal)
+cat("Using predict(): $", round(pred_ideal, 2), "\n")
+
+# Actual mean
+actual_ideal <- mean(df$price[df$cut == "Ideal"])
+cat("Actual mean price for Ideal cut: $", round(actual_ideal, 2), "\n")
+
+# Using the aggregate result from above
+cat("From aggregate: $", round(ideal_actual, 2), "\n")
+```
+
+```{r}
+# ======================================================================
+# (d) Modify the regression model by incorporating the predictor "table"
+# ======================================================================
+
+cat("\n\nPART (d): Model with Cut + Table\n")
+cat("----------------------------------\n")
+
+model_table <- lm(price ~ cut + table, data = df_cut)
+cat("Fitted Regression Model:\n")
+cat("price = ", round(coef(model_table)[1], 2))
+cat(" + ", round(coef(model_table)["table"], 2), "*table")
+for(i in 2:5) {
+  cat(" + ", round(coef(model_table)[i], 2), "*cut", names(coef(model_table))[i], sep="")
+}
+cat("\n\n")
+summary(model_table)
+stargazer(model_table, type = "text", title = "Model: Price ~ Cut + Table")
+```
+
+```{r}
+# ======================================================================
+# (e) Test for the significance of "table" in predicting price
+# ======================================================================
+
+cat("\n\nPART (e): Testing Significance of Table\n")
+cat("----------------------------------------\n")
+
+table_coef <- summary(model_table)$coefficients["table", ]
+cat("Coefficient for table:", round(table_coef["Estimate"], 4), "\n")
+cat("Standard Error:", round(table_coef["Std. Error"], 4), "\n")
+cat("t-value:", round(table_coef["t value"], 2), "\n")
+cat("p-value:", format.pval(table_coef["Pr(>|t|)"], digits=4), "\n")
+
+# F-test comparing models with and without table
+anova_result <- anova(model_cut, model_table)
+cat("\nANOVA comparison (Model without table vs with table):\n")
+print(anova_result)
+
+if(table_coef["Pr(>|t|)"] < 0.05) {
+  cat("\nCONCLUSION: Table is a SIGNIFICANT predictor of diamond price (p < 0.05).\n")
+} else {
+  cat("\nCONCLUSION: Table is NOT a significant predictor of diamond price.\n")
+}
+```
+
+```{r}
+# ======================================================================
+# (f) Find the average estimated price of a diamond with an average 
+#     table value and which is of fair cut
+# ======================================================================
+
+cat("\n\nPART (f): Average Estimated Price (Fair Cut, Average Table)\n")
+cat("------------------------------------------------------------\n")
+
+# Calculate average table value
+avg_table <- mean(df$table, na.rm = TRUE)
+cat("Average table value:", round(avg_table, 2), "\n")
+
+# Create new data point for Fair cut with average table
+new_fair <- data.frame(
+  cut = factor("Fair", levels = levels(df_cut$cut)),
+  table = avg_table
+)
+
+# Predict price with confidence interval
+pred_fair <- predict(model_table, newdata = new_fair, interval = "confidence")
+
+cat("\nFor a diamond with:\n")
+cat("- Cut: FAIR\n")
+cat("- Table value:", round(avg_table, 2), "(average)\n")
+cat("\nAverage estimated price: $", round(pred_fair[1], 2), "\n")
+cat("95% Confidence Interval: [$", round(pred_fair[2], 2), ", $", round(pred_fair[3], 2), "]\n")
+
+# For comparison, also calculate for other cuts with average table
+cat("\nFor comparison (all cuts with average table):\n")
+cut_levels <- levels(df_cut$cut)
+for(cut_type in cut_levels) {
+  new_data <- data.frame(
+    cut = factor(cut_type, levels = levels(df_cut$cut)),
+    table = avg_table
+  )
+  pred <- predict(model_table, newdata = new_data)
+  cat("  ", cut_type, ": $", round(pred, 2), "\n")
+}
+```
