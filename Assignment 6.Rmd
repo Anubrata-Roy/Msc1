@@ -1,0 +1,196 @@
+---
+title: "P_Set_6"
+author: "anubrata roy"
+date: "2026-03-19"
+output: word_document
+---
+
+
+```{r}
+# Load required libraries
+library(ISLR)
+library(leaps)
+library(glmnet)
+
+# Load Hitters data
+data(Hitters)
+
+# Remove rows with missing values
+Hitters_clean <- na.omit(Hitters)
+dim(Hitters_clean)
+```
+
+2. Split Data into Train and Test Sets
+
+
+```{r}
+set.seed(123) 
+n <- nrow(Hitters_clean)
+train_indices <- sample(1:n, size = 0.8 * n)
+train <- Hitters_clean[train_indices, ]
+test <- Hitters_clean[-train_indices, ]
+
+cat("Training set size:", nrow(train), "\n")
+cat("Test set size:", nrow(test), "\n")
+```
+
+3. Best Subset Selection
+```{r}
+# Perform best subset selection
+best_subset <- regsubsets(Salary ~ ., data = train, nvmax = 19)
+best_summary <- summary(best_subset)
+
+# Create results dataframe
+best_results <- data.frame(
+  nvars = 1:19,
+  adjr2 = best_summary$adjr2,
+  bic = best_summary$bic,
+  cp = best_summary$cp
+)
+
+# Find best models according to different criteria
+best_adjr2 <- which.max(best_summary$adjr2)
+best_bic <- which.min(best_summary$bic)
+best_cp <- which.min(best_summary$cp)
+
+cat("Best model by Adjusted R²:", best_adjr2, "variables\n")
+cat("Best model by BIC:", best_bic, "variables\n")
+cat("Best model by Cp:", best_cp, "variables\n")
+
+# Get coefficients for each best model
+coef_adjr2 <- coef(best_subset, best_adjr2)
+coef_bic <- coef(best_subset, best_bic)
+coef_cp <- coef(best_subset, best_cp)
+
+cat("\nCoefficients for best model by Adjusted R²:\n")
+print(coef_adjr2)
+cat("\nCoefficients for best model by BIC:\n")
+print(coef_bic)
+cat("\nCoefficients for best model by Cp:\n")
+print(coef_cp)
+```
+4. Training and Test MSE for Best Subset Models
+```{r}
+# Function to get predictions from regsubsets object
+predict_regsubsets <- function(object, newdata, id) {
+  form <- as.formula(object$call[[2]])
+  mat <- model.matrix(form, newdata)
+  coefs <- coef(object, id = id)
+  xvars <- names(coefs)
+  mat[, xvars] %*% coefs
+}
+
+# Calculate MSE for each best model
+criteria <- c("AdjR2", "BIC", "Cp")
+best_sizes <- c(best_adjr2, best_bic, best_cp)
+train_mse_best <- numeric(3)
+test_mse_best <- numeric(3)
+
+for(i in 1:3) {
+  # Training MSE
+  train_pred <- predict_regsubsets(best_subset, train, best_sizes[i])
+  train_mse_best[i] <- mean((train$Salary - train_pred)^2)
+  
+  # Test MSE
+  test_pred <- predict_regsubsets(best_subset, test, best_sizes[i])
+  test_mse_best[i] <- mean((test$Salary - test_pred)^2)
+}
+
+best_subset_results <- data.frame(
+  Criterion = criteria,
+  nVars = best_sizes,
+  Train_MSE = train_mse_best,
+  Test_MSE = test_mse_best
+)
+
+print(best_subset_results)
+```
+
+5. Forward Stepwise Selection
+```{r}
+# Forward stepwise selection
+forward_select <- regsubsets(Salary ~ ., data = train, nvmax = 19, 
+                             method = "forward")
+forward_summary <- summary(forward_select)
+
+# Find best models
+forward_adjr2 <- which.max(forward_summary$adjr2)
+forward_bic <- which.min(forward_summary$bic)
+forward_cp <- which.min(forward_summary$cp)
+
+# Calculate MSE for forward stepwise
+train_mse_forward <- numeric(3)
+test_mse_forward <- numeric(3)
+forward_sizes <- c(forward_adjr2, forward_bic, forward_cp)
+
+for(i in 1:3) {
+  train_pred <- predict_regsubsets(forward_select, train, forward_sizes[i])
+  train_mse_forward[i] <- mean((train$Salary - train_pred)^2)
+  
+  test_pred <- predict_regsubsets(forward_select, test, forward_sizes[i])
+  test_mse_forward[i] <- mean((test$Salary - test_pred)^2)
+}
+
+forward_results <- data.frame(
+  Criterion = criteria,
+  nVars = forward_sizes,
+  Train_MSE = train_mse_forward,
+  Test_MSE = test_mse_forward
+)
+
+print(forward_results)
+```
+
+6. Backward Stepwise Selection
+```{r}
+# Backward stepwise selection
+backward_select <- regsubsets(Salary ~ ., data = train, nvmax = 19, 
+                              method = "backward")
+backward_summary <- summary(backward_select)
+
+# Find best models
+backward_adjr2 <- which.max(backward_summary$adjr2)
+backward_bic <- which.min(backward_summary$bic)
+backward_cp <- which.min(backward_summary$cp)
+
+# Calculate MSE for backward stepwise
+train_mse_backward <- numeric(3)
+test_mse_backward <- numeric(3)
+backward_sizes <- c(backward_adjr2, backward_bic, backward_cp)
+
+for(i in 1:3) {
+  train_pred <- predict_regsubsets(backward_select, train, backward_sizes[i])
+  train_mse_backward[i] <- mean((train$Salary - train_pred)^2)
+  
+  test_pred <- predict_regsubsets(backward_select, test, backward_sizes[i])
+  test_mse_backward[i] <- mean((test$Salary - test_pred)^2)
+}
+
+backward_results <- data.frame(
+  Criterion = criteria,
+  nVars = backward_sizes,
+  Train_MSE = train_mse_backward,
+  Test_MSE = test_mse_backward
+)
+
+print(backward_results)
+```
+
+7. Comparison of All Methods
+```{r}
+# Create comparison table
+comparison <- data.frame(
+  Method = rep(c("Best Subset", "Forward", "Backward"), each = 3),
+  Criterion = rep(criteria, 3),
+  nVars = c(best_sizes, forward_sizes, backward_sizes),
+  Train_MSE = c(train_mse_best, train_mse_forward, train_mse_backward),
+  Test_MSE = c(test_mse_best, test_mse_forward, test_mse_backward)
+)
+
+print(comparison)
+
+# Summary statistics
+cat("\nSummary of Test MSE across methods:\n")
+print(tapply(comparison$Test_MSE, comparison$Method, summary))
+```
+

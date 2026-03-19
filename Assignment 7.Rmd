@@ -1,0 +1,121 @@
+---
+title: "P_Set_7"
+author: "anubrata roy"
+date: "2026-03-19"
+output: word_document
+---
+
+1. Split Data for Shrinkage Methods
+```{r}
+set.seed(456)
+n <- nrow(Hitters_clean)
+test_indices <- sample(1:n, size = 100)
+train_ps7 <- Hitters_clean[-test_indices, ]
+test_ps7 <- Hitters_clean[test_indices, ]
+
+cat("Training set size:", nrow(train_ps7), "\n")
+cat("Test set size:", nrow(test_ps7), "\n")
+```
+
+
+2. Least Squares Regression
+
+```{r}
+# Fit least squares model
+ls_model <- lm(Salary ~ ., data = train_ps7)
+
+# Calculate MSE
+ls_train_pred <- predict(ls_model, train_ps7)
+ls_test_pred <- predict(ls_model, test_ps7)
+
+ls_train_mse <- mean((train_ps7$Salary - ls_train_pred)^2)
+ls_test_mse <- mean((test_ps7$Salary - ls_test_pred)^2)
+
+cat("Least Squares Results:\n")
+cat("Train MSE:", ls_train_mse, "\n")
+cat("Test MSE:", ls_test_mse, "\n")
+```
+
+
+
+3. Ridge Regression with Grid Values
+
+```{r}
+# Prepare data for glmnet
+x_train <- model.matrix(Salary ~ ., train_ps7)[, -1]
+y_train <- train_ps7$Salary
+x_test <- model.matrix(Salary ~ ., test_ps7)[, -1]
+y_test <- test_ps7$Salary
+
+# Ridge regression with grid of lambda values
+grid <- 10^seq(10, -2, length = 100)
+ridge_models <- glmnet(x_train, y_train, alpha = 0, lambda = grid)
+
+# (i) Dimension of coefficient matrix
+cat("(i) Dimension of coefficient matrix:", dim(ridge_models$beta), "\n")
+
+# (ii) L2 norm for 50th and 60th lambda
+l2_norm_50 <- sqrt(sum(ridge_models$beta[, 50]^2))
+l2_norm_60 <- sqrt(sum(ridge_models$beta[, 60]^2))
+
+cat("\n(ii) L2 norms:\n")
+cat("Lambda 50th choice:", ridge_models$lambda[50], "\n")
+cat("L2 norm:", l2_norm_50, "\n")
+cat("Lambda 60th choice:", ridge_models$lambda[60], "\n")
+cat("L2 norm:", l2_norm_60, "\n")
+
+# (iv) Test MSE for these lambdas
+pred_50 <- predict(ridge_models, s = ridge_models$lambda[50], newx = x_test)
+pred_60 <- predict(ridge_models, s = ridge_models$lambda[60], newx = x_test)
+
+mse_50 <- mean((y_test - pred_50)^2)
+mse_60 <- mean((y_test - pred_60)^2)
+
+cat("\n(iv) Test MSE:\n")
+cat("Test MSE for lambda 50:", mse_50, "\n")
+cat("Test MSE for lambda 60:", mse_60, "\n")
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
