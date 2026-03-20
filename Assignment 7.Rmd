@@ -7,7 +7,18 @@ output: word_document
 
 1. Split Data for Shrinkage Methods
 ```{r}
-set.seed(456)
+set.seed(123)
+# Load required libraries
+library(ISLR)
+library(leaps)
+library(glmnet)
+
+# Load Hitters data
+data(Hitters)
+
+# Remove rows with missing values
+Hitters_clean <- na.omit(Hitters)
+dim(Hitters_clean)
 n <- nrow(Hitters_clean)
 test_indices <- sample(1:n, size = 100)
 train_ps7 <- Hitters_clean[-test_indices, ]
