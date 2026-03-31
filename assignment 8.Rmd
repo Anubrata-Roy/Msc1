@@ -1,0 +1,269 @@
+---
+title: "assignment 8"
+author: "anubrata roy"
+date: "2026-03-31"
+output: html_document
+---
+
+# Part (a): Train-Test Split
+
+Observations from **1990–2008** form the training set, and **2009–2010** form the test set.
+
+```{r}
+library(ISLR)
+library(dplyr)
+library(knitr)
+library(kableExtra)
+
+data(Weekly)
+
+# Train: 1990 to 2008
+train <- Weekly %>% filter(Year <= 2008)
+
+# Test: 2009 to 2010
+test  <- Weekly %>% filter(Year >= 2009)
+
+cat("Training set size:", nrow(train), "\n")
+cat("Test set size    :", nrow(test),  "\n")
+cat("\nDistribution of Direction in Training Set:\n")
+print(table(train$Direction))
+cat("\nDistribution of Direction in Test Set:\n")
+print(table(test$Direction))
+```
+
+
+# Part (b): Logistic Regression – Training Data
+
+We fit a logistic regression with `Direction` as the binary response and `Lag1`, `Lag2`, `Lag3`, `Lag4`, `Lag5`, and `Volume` as predictors.
+
+```{r}
+# Fit logistic regression model
+logit_model <- glm(Direction ~ Lag1 + Lag2 + Lag3 + Lag4 + Lag5 + Volume,
+                   data   = train,
+                   family = binomial(link = "logit"))
+
+summary(logit_model)
+```
+
+```{r}
+# Find predictor with minimum p-value (excluding intercept)
+p_vals   <- coef_table[-1, "Pr(>|z|)"]           # drop intercept
+min_pred <- names(which.min(p_vals))
+min_pval <- min(p_vals)
+min_coef <- coef_table[min_pred, "Estimate"]
+
+cat("Significant predictors (alpha = 0.05):",
+    ifelse(any(p_vals < 0.05),
+           paste(names(p_vals[p_vals < 0.05]), collapse = ", "),
+           "None"), "\n\n")
+
+cat(sprintf("Predictor with the smallest p-value : %s\n", min_pred))
+cat(sprintf("p-value  : %.4f\n", min_pval))
+cat(sprintf("Estimated coefficient : %.4f\n", min_coef))
+cat(sprintf("Odds ratio exp(coef) : %.4f\n", exp(min_coef)))
+
+```
+# Part (c): Odds of Market Going "Up" at Median Predictor Values
+
+```{r}
+# Compute median values of all predictors in the training data
+med_vals <- train %>% summarise(across(c(Lag1, Lag2, Lag3, Lag4, Lag5, Volume), median))
+
+cat("Median values of predictors:\n")
+print(med_vals)
+
+# Predict log-odds at median values
+log_odds_med <- predict(logit_model, newdata = med_vals, type = "link")
+prob_med     <- predict(logit_model, newdata = med_vals, type = "response")
+odds_med     <- exp(log_odds_med)
+
+cat(sprintf("\nLog-odds at median predictors : %.4f\n", log_odds_med))
+cat(sprintf("Odds at median predictors : %.4f\n", odds_med))
+cat(sprintf("Probability at median predictors : %.4f\n", prob_med))
+```
+
+
+Part (e): Optimal Cut-Point on Test Data (Minimising TPR × (1 − FPR))
+
+We use the fitted model to predict probabilities on the test data, then find the threshold that **minimises** $TPR \times (1 - FPR)$ (equivalently, maximises $TPR \times FPR$, i.e., the Youden Index point inverted — we minimise the product of sensitivity and specificity complement).
+
+```{r}
+# Predicted probabilities on test data
+test_probs <- predict(logit_model, newdata = test, type = "response")
+test_dir   <- ifelse(test$Direction == "Up", 1, 0)   # 1 = Up, 0 = Down
+
+# Compute TPR and FPR across a grid of cut-points
+thresholds <- seq(0.01, 0.99, by = 0.001)
+
+results <- sapply(thresholds, function(t) {
+  pred_class <- ifelse(test_probs >= t, 1, 0)
+  TP <- sum(pred_class == 1 & test_dir == 1)
+  FP <- sum(pred_class == 1 & test_dir == 0)
+  TN <- sum(pred_class == 0 & test_dir == 0)
+  FN <- sum(pred_class == 0 & test_dir == 1)
+
+  TPR <- ifelse((TP + FN) > 0, TP / (TP + FN), 0)   # Sensitivity
+  FPR <- ifelse((FP + TN) > 0, FP / (FP + TN), 0)   # 1 - Specificity
+
+  c(TPR = TPR, FPR = FPR, obj = TPR * (1 - FPR))
+})
+
+results_df   <- as.data.frame(t(results))
+results_df$threshold <- thresholds
+
+# Optimal threshold: minimise TPR * (1 - FPR)
+opt_idx   <- which.min(results_df$obj)
+opt_cut   <- results_df$threshold[opt_idx]
+opt_TPR   <- results_df$TPR[opt_idx]
+opt_FPR   <- results_df$FPR[opt_idx]
+
+cat(sprintf("Optimal cut-point            : %.3f\n", opt_cut))
+cat(sprintf("TPR at optimal cut-point     : %.4f\n", opt_TPR))
+cat(sprintf("FPR at optimal cut-point     : %.4f\n", opt_FPR))
+cat(sprintf("TPR*(1-FPR) at optimal cut   : %.6f\n", opt_TPR * (1 - opt_FPR)))
+```
+
+## Confusion Matrix at Optimal Cut-Point
+
+```{r}
+# Classify test observations using optimal cut-point
+pred_opt <- factor(ifelse(test_probs >= opt_cut, "Up", "Down"),
+                   levels = c("Down", "Up"))
+actual   <- factor(test$Direction, levels = c("Down", "Up"))
+
+# Confusion matrix (rows = Predicted, cols = Actual) — force both levels
+conf_mat <- table(Predicted = pred_opt, Actual = actual)
+print(conf_mat)
+
+# Safe cell extraction (returns 0 if row/col missing)
+safe_cell <- function(mat, r, c) {
+  if (r %in% rownames(mat) && c %in% colnames(mat)) mat[r, c] else 0
+}
+
+TP <- safe_cell(conf_mat, "Up",   "Up")
+TN <- safe_cell(conf_mat, "Down", "Down")
+FP <- safe_cell(conf_mat, "Up",   "Down")
+FN <- safe_cell(conf_mat, "Down", "Up")
+
+total      <- sum(conf_mat)
+test_error <- (FP + FN) / total
+accuracy   <- 1 - test_error
+sensitivity <- TP / (TP + FN)
+specificity <- TN / (TN + FP)
+
+cat(sprintf("\nTotal test observations : %d\n", total))
+cat(sprintf("Correctly classified    : %d\n", TP + TN))
+cat(sprintf("Misclassified           : %d\n", FP + FN))
+cat(sprintf("Test Error Rate         : %.4f (%.2f%%)\n", test_error, test_error * 100))
+cat(sprintf("Accuracy                : %.4f (%.2f%%)\n", accuracy,   accuracy   * 100))
+cat(sprintf("Sensitivity (TPR)       : %.4f\n", sensitivity))
+cat(sprintf("Specificity             : %.4f\n", specificity))
+```
+
+# Part (f): Model with Only Lag1 and Lag2
+
+We refit the logistic regression using only `Lag1` and `Lag2` and compare the test error rate.
+
+```{r}
+# Fit reduced model (Lag1 + Lag2 only)
+logit_reduced <- glm(Direction ~ Lag1 + Lag2,
+                     data   = train,
+                     family = binomial(link = "logit"))
+
+summary(logit_reduced)
+```
+
+```{r}
+coef_r <- as.data.frame(summary(logit_reduced)$coefficients)
+coef_r$Variable <- rownames(coef_r)
+rownames(coef_r) <- NULL
+coef_r <- coef_r[, c("Variable","Estimate","Std. Error","z value","Pr(>|z|)")]
+coef_r %>%
+  mutate(across(where(is.numeric), ~ round(.x, 4))) %>%
+  kable(caption = "Reduced Model Coefficients (Lag1 + Lag2 only)",
+        align = c("l","r","r","r","r")) %>%
+  kable_styling(bootstrap_options = c("striped","hover","condensed"), full_width = FALSE)
+```
+
+## Optimal Cut-Point for Reduced Model
+
+```{r}
+# Predictions on test data from reduced model
+test_probs_r <- predict(logit_reduced, newdata = test, type = "response")
+
+results_r <- sapply(thresholds, function(t) {
+  pred_class <- ifelse(test_probs_r >= t, 1, 0)
+  TP <- sum(pred_class == 1 & test_dir == 1)
+  FP <- sum(pred_class == 1 & test_dir == 0)
+  TN <- sum(pred_class == 0 & test_dir == 0)
+  FN <- sum(pred_class == 0 & test_dir == 1)
+  TPR <- ifelse((TP + FN) > 0, TP / (TP + FN), 0)
+  FPR <- ifelse((FP + TN) > 0, FP / (FP + TN), 0)
+  c(TPR = TPR, FPR = FPR, obj = TPR * (1 - FPR))
+})
+
+results_r_df <- as.data.frame(t(results_r))
+results_r_df$threshold <- thresholds
+
+opt_idx_r <- which.min(results_r_df$obj)
+opt_cut_r <- results_r_df$threshold[opt_idx_r]
+
+cat(sprintf("Optimal cut-point (reduced model): %.3f\n", opt_cut_r))
+
+# Confusion matrix for reduced model — force both levels
+pred_opt_r <- factor(ifelse(test_probs_r >= opt_cut_r, "Up", "Down"),
+                     levels = c("Down", "Up"))
+conf_mat_r <- table(Predicted = pred_opt_r, Actual = actual)
+print(conf_mat_r)
+
+TP_r <- safe_cell(conf_mat_r, "Up",   "Up")
+TN_r <- safe_cell(conf_mat_r, "Down", "Down")
+FP_r <- safe_cell(conf_mat_r, "Up",   "Down")
+FN_r <- safe_cell(conf_mat_r, "Down", "Up")
+
+test_error_r <- (FP_r + FN_r) / total
+cat(sprintf("\nTest Error Rate (Lag1+Lag2 model): %.4f (%.2f%%)\n",
+            test_error_r, test_error_r * 100))
+```
+
+```{r}
+comparison <- data.frame(
+  Model         = c("Full Model (Lag1–Lag5 + Volume)", "Reduced Model (Lag1 + Lag2)"),
+  `Cut-Point`   = c(round(opt_cut,   3), round(opt_cut_r, 3)),
+  `Test Error`  = c(paste0(round(test_error   * 100, 2), "%"),
+                    paste0(round(test_error_r * 100, 2), "%")),
+  check.names = FALSE
+)
+comparison %>%
+  kable(caption = "Comparison of Test Error Rates", align = c("l","c","c")) %>%
+  kable_styling(bootstrap_options = c("striped","hover"), full_width = FALSE)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
